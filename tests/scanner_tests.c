@@ -34,6 +34,14 @@ int main(){
     TokenNode* el = get_node(p, TokenNode);
     assert(el->token->type == i++);
   }
+
+  TokenNode* token_list_head = arena_alloc(&a, sizeof(TokenNode));;
+  scanner("();", token_list_head, &a);
+  
+  list_for_each(p, token_list_head->list.next){
+    TokenNode* el = get_node(p, TokenNode);
+    printf("-> %d\n", el->token->type);
+  }
   
   return 0;
 }

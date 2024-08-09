@@ -42,7 +42,7 @@ typedef struct TokenNode {
 
 char* token_to_string(Token* t, Arena* a);
 
-TokenNode* scanner(char* source, Arena* a);
+//void scanner(char* source, TokenNode* token_list_head, Arena* a);
 
 #endif SCANNER_H
 
@@ -61,22 +61,33 @@ char* token_to_string(Token* t, Arena* a){
   return str;
 }
 
-void scan_token(){}
+void add_token(int type, TokenNode* last_node, Arena* a){
+  Token* token = arena_alloc(a, sizeof(Token));
+  token->type = type;
+  
+  TokenNode* token_node = arena_alloc(a, sizeof(TokenNode));
+  token_node->token = token;
+  
+  add_node(last_node, token_node);
 
-TokenNode* scanner(char* source, Arena* a){
-  int start = 0, current = 0;
-  TokenNode* token_list = arena_alloc(a, sizeof(TokenNode));
- 
-  while(source != '\0'){
-    start = current;
-    scan_token(&source);
+  last_node = token_node;
+}
+
+void scan_token(char** source, TokenNode* last_node, Arena* a){
+  char c = *((*source)++);
+
+  switch(c){
+    case '(': add_token(LEFT_PAREN, last_node, a); break;
+    case ')': add_token(RIGHT_PAREN, last_node, a); break;
   }
+}
 
-  Token* t = (Token*)arena_alloc(a, sizeof(Token));
-  t->type = eof;
-  token_list->token = t;
 
-  return token_list;
+void scanner(char* source, TokenNode* token_list_head, Arena* a){
+  TokenNode* last_token = token_list_head;
+
+  while(*source != ';'){ scan_token(&source, last_token, a); }
+  
 }
 
 #endif SCANNER_IMPL
