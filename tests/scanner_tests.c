@@ -6,7 +6,7 @@
 #define ARENA_IMPL
 #include "arena.h"
 
-#include "containers.h"
+#include "list.h"
 
 int main(){
   
@@ -35,13 +35,14 @@ int main(){
     assert(el->token->type == i++);
   }
 
-  TokenNode* token_list_head = arena_alloc(&a, sizeof(TokenNode));;
-  scanner("();", token_list_head, &a);
+  TokenNode head = {0};
+  TokenNode* tl = &head;
   
-  list_for_each(p, token_list_head->list.next){
+  scanner("()((@;", &tl, &a);
+  
+  list_for_each(p, head.list.next){
     TokenNode* el = get_node(p, TokenNode);
-    printf("-> %d\n", el->token->type);
+    printf("%d\n", el->token->type);
   }
-  
   return 0;
 }

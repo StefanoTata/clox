@@ -11,8 +11,8 @@ pushd out
 SET CompilerFlags=%CommonCompilerFlags% %ReleaseCompilerFlags%
 
 ::cl %CompilerFlags% ..\\tests\\arena_tests.c /I ..\\src /link %CommonLinkerFlags% /OUT:arena_test.exe
-cl %CompilerFlags% ..\\tests\\scanner_tests.c /I ..\\src /link %CommonLinkerFlags% /OUT:scanner_test.exe
-::cl %CompilerFlags% ..\\src\\clox.c /I ..\\src /link %CommonLinkerFlags% /OUT:clox.exe
+::cl %CompilerFlags% ..\\tests\\scanner_tests.c /I ..\\src /link %CommonLinkerFlags% /OUT:scanner_test.exe
+cl %CompilerFlags% ..\\src\\repl.c /I ..\\src /link %CommonLinkerFlags% /OUT:clox.exe
 
 SET LastError=%ERRORLEVEL%
 popd

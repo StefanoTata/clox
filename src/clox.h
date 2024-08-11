@@ -1,19 +1,38 @@
-#pragma warning(disable:4996)
+#ifndef CLOX_H
+#define CLOX_H
+
+//
+// INTERFACE
+//
+
+#include "arena.h"
+
+void error(int line, char* message);
+void run_prompt(Arena* a);
+void run_file(char* filename);
+
+#endif
+
+//
+//IMPLEMENTATION
+//
+
+#ifdef CLOX_WIN_IMPL 
 
 #include <stdio.h>
 
 #include "scanner.h"
 
-void report(int line, char* where, char* message){
-  fprintf(stdout, "[line \"%d\"] Error %s: %s", line, where, message);
-}
-
-void error(int line, char* message){
-  report(line, " ", message);
-}
-
-void run(char* input){
-  printf("%s\n", input);
+void run(char* input, int line, Arena* a){
+  TokenNode head = {0};
+  TokenNode* tl = &head;
+  
+  scanner(input, line, &tl, a);
+  
+  list_for_each(p, head.list.next){
+    TokenNode* el = get_node(p, TokenNode);
+    printf("%d\n", el->token->type);
+  }
 }
 
 #define GENERIC_READ 0x80000000
@@ -52,26 +71,14 @@ void run_file(char* filename){
   CloseHandle(h_file);
 }
 
-void run_prompt(){
+void run_prompt(Arena *a){
   char input[1024];
 
   for(;;){
     fprintf(stdout, "> ");
     fscanf(stdin, "%s", &input);
-    run(input);
+    run(input, 0, a);
   }
 }
 
-int main(int argc, char** argv){
-
-  if(argc > 2){
-    fprintf(stdout, "Usage: clox [script]\n");
-    return -1;
-  }
-  else if(argc == 2)
-    run_file(argv[1]);
-  else
-    run_prompt();
-  
-  return 0;
-}
+#endif
