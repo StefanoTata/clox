@@ -23,15 +23,16 @@ void run_file(char* filename);
 
 #include "scanner.h"
 
-void run(char* input, int line, Arena* a){
+void run(char* input, int* line, int* start, int* current, Arena* a){
   TokenNode head = {0};
   TokenNode* tl = &head;
   
-  scanner(input, line, &tl, a);
+  scanner(input, line, start, current, &tl, a);
   
   list_for_each(p, head.list.next){
     TokenNode* el = get_node(p, TokenNode);
-    printf("%d\n", el->token->type);
+    //printf("%d\n", el->token->type);
+    printf("%s\n", token_to_string(el->token, a));
   }
 }
 
@@ -73,11 +74,13 @@ void run_file(char* filename){
 
 void run_prompt(Arena *a){
   char input[1024];
+  int line = 1, start = 0, current = 0;
 
   for(;;){
     fprintf(stdout, "> ");
     fscanf(stdin, "%s", &input);
-    run(input, 0, a);
+    run(input, &line, &start, &current, a);
+    line = 1; start = 0; current = 0;
   }
 }
 
