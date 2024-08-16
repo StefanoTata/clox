@@ -9,7 +9,7 @@
 
 void error(int line, char* message);
 void run_prompt(Arena* a);
-void run_file(char* filename);
+void run_file(char* filename, Arena* a);
 
 #endif
 
@@ -31,7 +31,6 @@ void run(char* input, int* line, int* start, int* current, Arena* a){
   
   list_for_each(p, head.list.next){
     TokenNode* el = get_node(p, TokenNode);
-    //printf("%d\n", el->token->type);
     printf("%s\n", token_to_string(el->token, a));
   }
 }
@@ -53,8 +52,9 @@ void* CloseHandle(void*);
 __declspec(dllimport)
 void* UnmapViewOfFile(void*);
 
-void run_file(char* filename){ 
+void run_file(char* filename, Arena* a){ 
   void* h_file, *h_map, *base_ptr;
+  int line = 1, start = 0, current = 0;
 
   h_file = CreateFileA(filename, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
   if(!h_file){ fprintf(stderr, "Error opening file: %s\n", filename); return; }
@@ -65,7 +65,7 @@ void run_file(char* filename){
   base_ptr = MapViewOfFile(h_map, FILE_MAP_READ, 0, 0, 0);
   if(!base_ptr){ fprintf(stderr, "Error: map view of file %s failed\n", filename); return; }
 
-  printf("FILE: %s\n", (char*)base_ptr);
+  run((char*)base_ptr, &line, &start, &current, a);
 
   UnmapViewOfFile(base_ptr);
   CloseHandle(h_map);

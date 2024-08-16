@@ -54,8 +54,6 @@ void scanner(char* source, int* line, int* start, int* current, TokenNode** toke
 
 #define MAX_LEXEME_SIZE 30
 
-#include <ctype.h>
-
 void report(int line, char* where, char* message){
   fprintf(stdout, "[line \"%d\"] Error%s: %s", line, where, message);
 }
@@ -174,7 +172,7 @@ void scan_token(char* source, int* line, int* start, int* current, TokenNode** t
     case '\n': *line++; break;
     case '"': string(source, line, start, current, tl, a); break;
     default: 
-      if(is_digit(source[*current])){
+      if(is_digit(c)){
         number(source, *line, start, current, tl, a);
       } else if (is_alpha(c)){
         identifier(source, *line, start, current, tl, a);
@@ -186,7 +184,10 @@ void scan_token(char* source, int* line, int* start, int* current, TokenNode** t
 }
 
 void scanner(char* source, int* line, int* start, int* current, TokenNode** tl, Arena* a){
-  while(source[*current] != '\0'){ scan_token(source, line, start, current, tl, a); }
+  while(source[*current] != '\0'){ 
+    *start = *current;
+    scan_token(source, line, start, current, tl, a); 
+  }
 }
 
 #endif SCANNER_IMPL

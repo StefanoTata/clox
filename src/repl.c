@@ -21,7 +21,7 @@ int main(int argc, char** argv){
     return -1;
   }
   else if(argc == 2)
-    run_file(argv[1]);
+    run_file(argv[1], &a);
   else
     run_prompt(&a);
   
