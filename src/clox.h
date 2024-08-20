@@ -30,7 +30,7 @@ void run(char* input, int* line, int* start, int* current, Arena* a){
   scanner(input, line, start, current, &tl, a);
   
   TokenNode* tmp = get_node(head.list.next, TokenNode);
-  parser(tmp, a);
+  parser(&tmp, a);
 }
 
 #define GENERIC_READ 0x80000000
