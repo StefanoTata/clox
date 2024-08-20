@@ -7,14 +7,13 @@
 
 #include "arena.h"
 
-void error(int line, char* message);
 void run_prompt(Arena* a);
 void run_file(char* filename, Arena* a);
 
 #endif
 
 //
-//IMPLEMENTATION
+// IMPLEMENTATION
 //
 
 #ifdef CLOX_WIN_IMPL 
@@ -22,6 +21,7 @@ void run_file(char* filename, Arena* a);
 #include <stdio.h>
 
 #include "scanner.h"
+#include "parser.h"
 
 void run(char* input, int* line, int* start, int* current, Arena* a){
   TokenNode head = {0};
@@ -29,10 +29,8 @@ void run(char* input, int* line, int* start, int* current, Arena* a){
   
   scanner(input, line, start, current, &tl, a);
   
-  list_for_each(p, head.list.next){
-    TokenNode* el = get_node(p, TokenNode);
-    printf("%s\n", token_to_string(el->token, a));
-  }
+  TokenNode* tmp = get_node(head.list.next, TokenNode);
+  parser(tmp, a);
 }
 
 #define GENERIC_READ 0x80000000
