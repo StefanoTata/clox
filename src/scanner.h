@@ -5,46 +5,44 @@
 // INTERFACE
 //
 
-#include <stdio.h>
+typedef enum {
+  TOKEN_LEFT_PAREN, TOKEN_RIGHT_PAREN,
+  TOKEN_LEFT_BRACE, TOKEN_RIGHT_BRACE,
+  TOKEN_COMA, TOKEN_DOT, TOKEN_MINUS, TOKEN_PLUS,
+  TOKEN_SEMICOLON, TOKEN_SLASH, TOKEN_STAR,
 
-#include "arena.h"
-#include "list.h"
+  TOKEN_BANG,TOKEN_BANG_EQUAL,
+  TOKEN_EQUAL, TOKEN_EQUAL_EQUAL,
+  TOKEN_GREATER, TOKEN_GREATER_EQUAL,
+  TOKEN_LESS, TOKEN_LESS_EQUAL,
 
-enum TokenType {
-  // Singlecharacter tokens.
-  LEFT_PAREN, RIGHT_PAREN, LEFT_BRACE, RIGHT_BRACE,
-  COMMA, DOT, MINUS, PLUS, SEMICOLON, SLASH, STAR,
+  TOKEN_IDENTIFIER, TOKEN_STRING, TOKEN_NUMBER,
 
-  // One or two char token
-  BANG, BANG_EQUAL, EQUAL, EQUAL_EQUAL,
-  GREATER, GREATER_EQUAL, LESS, LESS_EQUAL,
+  TOKEN_AND, TOKEN_CLASS, TOKEN_ELSE, TOKEN_FALSE,
+  TOKEN_FOR, TOKEN_FUN, TOKEN_IF, TOKEN_NIL, TOKEN_OR,
+  TOKEN_PRINT, TOKEN_RETURN, TOKEN_SUPER, TOKEN_THIS,
+  TOKEN_TRUE, TOKEN_VAR, TOKEN_WHILE,
 
-  // Literals
-  IDENTIFIER, STRING, NUMBER,
+  TOKEN_ERROR, TOKEN_EOF
+} TokenType;
 
-  // Keywords
-  AND, CLASS, ELSE, FALSE, FUN, FOR, IF, NIL, OR,
-  PRINT, RETURN, SUPER, THIS, TRUE, VAR, WHILE,
+typedef struct{
+  const char* start;
+  const char* current;
+  int line;
+} Scanner;
 
-  CEOF
-};
-
-typedef struct Token {
-  int type;
-  char* lexeme;
+typedef struct{
+  TokenType type;
+  const char* start;
+  int lenght;
   int line;
 } Token;
 
-typedef struct TokenNode {
-  Token* token;
-  List list;
-} TokenNode;
+void init_scanner(const char* source);
+Token scan_token();
 
-char* token_to_string(Token* t, Arena* a);
-void add_token(int type, char* lexeme, int line, TokenNode** tl, Arena* a);
-void scanner(char* source, int* line, int* start, int* current, TokenNode** token_list_tail, Arena* a);
-
-#endif SCANNER_H
+#endif
 
 //
 // IMPLEMENTATION
@@ -52,217 +50,185 @@ void scanner(char* source, int* line, int* start, int* current, TokenNode** toke
 
 #ifdef SCANNER_IMPL
 
-#define MAX_LEXEME_SIZE 30
+Scanner scanner;
 
-#include "hashmap.h"
-
-static void scanner_report(int line, char* where, char* message){
-  fprintf(stdout, "[line \"%d\"] Error%s: %s", line, where, message);
+void init_scanner(const char* source){
+  scanner.start = source;
+  scanner.current = source;
+  scanner.line = 1;
 }
 
-static void scanner_error(int line, char* message){
-  scanner_report(line, "", message);
+static inline int is_at_end(){ return *scanner.current == '\0'; }
+
+static inline int is_digit(const char c){ return c >= '0' && c <= '9'; }
+
+static inline int is_alpha(const char c){ return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c == '_'); }
+
+static Token make_token(TokenType type){
+  Token token;
+  token.type = type;
+  token.start = scanner.start;
+  token.lenght = (int)(scanner.current - scanner.start);
+  token.line = scanner.line;
+  return token;
 }
 
-char* token_to_string(Token* t, Arena* a){
-  char *str = 0;
-  str = arena_alloc(a, (2 + MAX_LEXEME_SIZE)*sizeof(char));
-  sprintf(str, "%d %s", t->type, t->lexeme);
-  return str;
+static Token error_token(const char* message){
+  Token token;
+  token.type = TOKEN_ERROR;
+  token.start = message;
+  token.lenght = (int)strlen(message);
+  token.line = scanner.line;
+  return token;
 }
 
-static int match(char* source, int* current, char expected){
-  if(source[*current] == '\0') return 0;
-  if(source[*current] != expected) return 0;
-  
-  (*current)++;
+static inline char advance(){
+  scanner.current++;
+  return scanner.current[-1];
+}
+
+static inline char peek(){ return *scanner.current; }
+
+static inline char peek_next(){
+  if(is_at_end()) return '\0';
+  return scanner.current[1];
+}
+
+static inline int match(const char expected){
+  if(is_at_end()) return 0;
+  if(peek() != expected) return 0;
+  scanner.current++;
   return 1;
 }
 
-void add_token(int type, char* lexeme, int line, TokenNode** tl, Arena* a){
-  Token* token = arena_alloc(a, sizeof(Token));
-  token->type = type;
-  token->lexeme = lexeme;
-  token->line = line;
-
-  TokenNode* token_node = arena_alloc(a, sizeof(TokenNode));
-  token_node->token = token;
-  
-  add_node(*tl, token_node);
-  *tl = token_node;
+static inline void skip_whitespace(){
+  for(;;){
+    char c = peek();
+    switch(c){
+      case ' ':
+      case '\r':
+      case '\t':
+        advance();
+        break;
+      case '\n':
+        scanner.line++;
+        advance();
+        break;
+      case '/':
+        if(peek_next() == '/'){
+          while(peek() != '\n' && !is_at_end()) advance();
+        } else {
+          return;
+        }
+      default:
+        return;
+    }
+  }
 }
 
-static void string(char* source, int* line, int* start, int* current, TokenNode** tl, Arena* a){
-  while(source[*current] != '"' && source[*current] != '\0'){
-    if(source[*current] == '\n') *line++;
-    (*current)++;
+static Token string(){
+  while(peek() != '"' && !is_at_end()){
+    if(peek() == '\n') scanner.line++;
+    advance();
   }
 
-  if(source[*current] == '\0') {
-    scanner_error(*line, "Unterminated string.\n");
-    return;
-  }
-  
-  // consuming closing "
-  (*current)++;
+  if(is_at_end()) return error_token("Unterminated string.");
 
-  int lexeme_size = *current - *start - 2;
-  char* lexeme = arena_alloc(a, lexeme_size + 1);
-  for(int i=0; i < lexeme_size; i++) lexeme[i] = source[(*start)+i+1];
-  lexeme[lexeme_size + 1] = '\0';
-
-  add_token(STRING, lexeme, *line, tl, a);
+  advance();
+  return make_token(TOKEN_STRING);
 }
 
-static inline int is_digit(char c){ if(c >= '0' && c <= '9') return 1; else return 0; }
-static inline int is_alpha(char c){ if((c >= 'a' &&  c <= 'z') || (c >= 'A' && c <= 'Z') || (c == '_')) return 1; else return 0; }
-static inline int is_alpha_num(char c){ if((c >= '0' && c <= '9') || (c >= 'a' &&  c <= 'z') || (c >= 'A' && c <= 'Z') || (c == '_')) return 1; else return 0; }
+static Token number(){
+  while(is_digit(peek())) advance();
 
-static void number(char* source, int line, int* start, int* current, TokenNode** tl, Arena* a){
-  while(is_digit(source[*current])) (*current)++;
-
-  if(source[*current] == '.' && is_digit(source[*current + 1])){
-    (*current)++;
-    while(is_digit(source[*current])) (*current)++;
+  if(peek() == '.' && is_digit(peek_next())){
+    advance();
+    while(is_digit(peek())) advance();
   }
 
-  int lexeme_size = *current - *start;
-  char* lexeme = arena_alloc(a, lexeme_size + 1);
-  for(int i=0; i < lexeme_size; i++) lexeme[i] = source[(*start)+i];
-  lexeme[lexeme_size + 1] = '\0';
-  
-  add_token(NUMBER, lexeme, line, tl, a);
+  return make_token(TOKEN_NUMBER);
 }
 
-static void identifier(char* source, int line, int* start, int* current, TokenNode** tl, Hashmap* hm, Arena* a){
-  while(is_alpha_num(source[*current])) (*current)++;
-  
-  int lexeme_size = *current - *start;
-  char* lexeme = arena_alloc(a, lexeme_size + 1);
-  for(int i=0; i < lexeme_size; i++) lexeme[i] = source[(*start)+i];
-  lexeme[lexeme_size + 1] = '\0';
-  
-  int* type = hm_get(hm, lexeme);
-  if(!type){
-    add_token(IDENTIFIER, lexeme, line, tl, a);
-    return;
+static inline TokenType check_keyword(int start, int lenght, const char* rest, TokenType type){
+  if(scanner.current - scanner.start == start + lenght &&
+      memcmp(scanner.start + start, rest, lenght) == 0){
+    return type;
   }
 
-  add_token(*type, lexeme, line, tl, a);
+  return TOKEN_IDENTIFIER;
 }
 
-static void scan_token(char* source, int* line, int* start, int* current, TokenNode** tl, Hashmap* hm, Arena* a){
-  char c = source[(*current)++];
-
-  switch(c){
-    case '(': add_token(LEFT_PAREN, 0, *line, tl, a); break;
-    case ')': add_token(RIGHT_PAREN, 0, *line,tl, a); break;
-    case '{': add_token(LEFT_BRACE, 0, *line, tl, a); break;
-    case '}': add_token(RIGHT_BRACE, 0, *line, tl, a); break;
-    case ',': add_token(COMMA, 0, *line, tl, a); break;
-    case '.': add_token(DOT, 0, *line, tl, a); break;
-    case '-': add_token(MINUS, 0, *line, tl, a); break;
-    case '+': add_token(PLUS, 0, *line, tl, a); break;
-    case ';': add_token(SEMICOLON, 0, *line, tl, a); break;
-    case '*': add_token(STAR, 0, *line, tl, a); break;
-    case '!': add_token(match(source, current, '=') ? BANG_EQUAL : BANG, 0, *line, tl, a); break;
-    case '=': add_token(match(source, current, '=') ? EQUAL_EQUAL : EQUAL, 0, *line, tl, a); break;
-    case '<': add_token(match(source, current, '=') ? LESS_EQUAL : LESS, 0, *line, tl, a); break;
-    case '>': add_token(match(source, current, '=') ? GREATER_EQUAL : GREATER, 0, *line, tl, a); break;
-    case '/': 
-      if(match(source, current, '/')) { while(source[*current] != '\n' && source[*current] != '\0') (*current)++; }
-      else add_token(SLASH, 0, *line, tl, a);
-      break;
-    case ' ':
-    case '\r':
-    case '\t':
-      break;
-    case '\n': *line++; break;
-    case '"': string(source, line, start, current, tl, a); break;
-    default: 
-      if(is_digit(c)){
-        number(source, *line, start, current, tl, a);
-      } else if (is_alpha(c)){
-        identifier(source, *line, start, current, tl, hm, a);
-      } else {
-        scanner_error(*line, "Unexpected character.\n");
+static TokenType identifier_type(){
+  switch(scanner.start[0]){
+    case 'a': return check_keyword(1, 2, "nd", TOKEN_AND);
+    case 'c': return check_keyword(1, 4, "lass", TOKEN_CLASS);
+    case 'e': return check_keyword(1, 3, "lse", TOKEN_ELSE);
+    case 'f':
+      if(scanner.current - scanner.start > 1){
+        switch(scanner.start[1]){
+          case 'a': return check_keyword(2, 3, "lse", TOKEN_FALSE);
+          case 'o': return check_keyword(2, 1, "r", TOKEN_FOR);
+          case 'u': return check_keyword(2, 1, "n", TOKEN_FUN);
+        }
       }
       break;
-  }
-}
-
-void set_keywords(Hashmap* hm, Arena* a){
-  int* tk_and = arena_alloc(a, sizeof(int));
-  *tk_and = AND;
-  hm_set(hm, "and", tk_and, a);
-  
-  int* tk_class = arena_alloc(a, sizeof(int));
-  *tk_class = CLASS;
-  hm_set(hm, "class", tk_class, a);
-  
-  int* tk_else = arena_alloc(a, sizeof(int));
-  *tk_else = ELSE;
-  hm_set(hm, "else", tk_else, a);
-  
-  int* tk_false = arena_alloc(a, sizeof(int));
-  *tk_false = FALSE;
-  hm_set(hm, "false", tk_false, a);
-  
-  int* tk_for = arena_alloc(a, sizeof(int));
-  *tk_for = FOR;
-  hm_set(hm, "for", tk_for, a);
-  
-  int* tk_fun = arena_alloc(a, sizeof(int));
-  *tk_fun = FUN;
-  hm_set(hm, "fun", tk_fun, a);
-  
-  int* tk_if = arena_alloc(a, sizeof(int));
-  *tk_if =IF;
-  hm_set(hm, "if", tk_if, a);
-  
-  int* tk_nil = arena_alloc(a, sizeof(int));
-  *tk_nil = NIL;
-  hm_set(hm, "nil", tk_nil, a);
-  
-  int* tk_print = arena_alloc(a, sizeof(int));
-  *tk_print = PRINT;
-  hm_set(hm, "print", tk_print, a);
-  
-  int* tk_return = arena_alloc(a, sizeof(int));
-  *tk_return = RETURN;
-  hm_set(hm, "return", tk_return, a);
-  
-  int* tk_super = arena_alloc(a, sizeof(int));
-  *tk_super = SUPER;
-  hm_set(hm, "super", tk_super, a);
-  
-  int* tk_this = arena_alloc(a, sizeof(int));
-  *tk_this = THIS;
-  hm_set(hm, "this", tk_this, a);
-  
-  int* tk_true = arena_alloc(a, sizeof(int));
-  *tk_true = TRUE;
-  hm_set(hm, "true", tk_true, a);
-  
-  int* tk_var = arena_alloc(a, sizeof(int));
-  *tk_var = VAR;
-  hm_set(hm, "var", tk_var, a);
-  
-  int* tk_while = arena_alloc(a, sizeof(int));
-  *tk_while = WHILE;
-  hm_set(hm, "while", tk_while, a);
-}
-
-void scanner(char* source, int* line, int* start, int* current, TokenNode** tl, Arena* a){
-  Hashmap* hm = hm_create(a);
-  set_keywords(hm, a);
-
-  while(source[*current] != '\0'){ 
-    *start = *current;
-    scan_token(source, line, start, current, tl, hm, a); 
+    case 'i': return check_keyword(1, 1, "f", TOKEN_IF);
+    case 'n': return check_keyword(1, 2, "il", TOKEN_NIL);
+    case 'o': return check_keyword(1, 1, "r", TOKEN_OR);
+    case 'p': return check_keyword(1, 4, "rint", TOKEN_PRINT);
+    case 'r': return check_keyword(1, 5, "eturn", TOKEN_RETURN);
+    case 's': return check_keyword(1, 4, "uper", TOKEN_SUPER);
+    case 't':
+      if(scanner.current - scanner.start > 1){
+        switch(scanner.start[1]){
+          case 'h': return check_keyword(2, 2, "is", TOKEN_THIS);
+          case 'r': return check_keyword(2, 2, "ue", TOKEN_TRUE);
+        }
+      }
+      break;
+    case 'v': return check_keyword(1, 2, "ar", TOKEN_VAR);
+    case 'w': return check_keyword(1, 4, "hile", TOKEN_WHILE);
   }
 
-  add_token(CEOF, 0, *line, tl, a);
+  return TOKEN_IDENTIFIER;
 }
 
-#endif SCANNER_IMPL
+static Token identifier(){
+  while(is_alpha(peek()) || is_digit(peek())) advance(); 
+  return make_token(identifier_type());
+}
+
+Token scan_token(){
+  skip_whitespace();
+
+  scanner.start = scanner.current;
+  if(is_at_end()) return make_token(TOKEN_EOF);
+
+  char c = advance();
+  
+  if(is_alpha(c)) return identifier();
+  if(is_digit(c)) return number();
+
+  switch (c){
+    case '(': return make_token(TOKEN_LEFT_PAREN);
+    case ')': return make_token(TOKEN_RIGHT_PAREN);
+    case '{': return make_token(TOKEN_LEFT_BRACE);
+    case '}': return make_token(TOKEN_RIGHT_BRACE);
+    case ';': return make_token(TOKEN_SEMICOLON);
+    case ',': return make_token(TOKEN_COMA);
+    case '.': return make_token(TOKEN_DOT);
+    case '-': return make_token(TOKEN_MINUS);
+    case '+': return make_token(TOKEN_PLUS);
+    case '/': return make_token(TOKEN_SLASH);
+    case '*': return make_token(TOKEN_STAR);
+    case '!': return make_token(match('=') ? TOKEN_BANG_EQUAL : TOKEN_BANG);
+    case '=': return make_token(match('=') ? TOKEN_EQUAL_EQUAL : TOKEN_EQUAL);
+    case '<': return make_token(match('=') ? TOKEN_LESS_EQUAL : TOKEN_LESS);
+    case '>': return make_token(match('=') ? TOKEN_GREATER_EQUAL : TOKEN_GREATER);
+    case '"': return string();
+  }
+
+  return error_token("Unexpected character.");
+}
+
+#endif

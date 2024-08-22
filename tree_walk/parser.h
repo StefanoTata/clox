@@ -64,7 +64,7 @@ static int token_match(TokenNode** current, int size, ...){
   return 0;
 }
 
-void parse_error(Token* t, const char* msg){
+void parser_error(Token* t, const char* msg){
   if(t->type == CEOF){
     fprintf(stdout, "[line \"%d\"] Error at end: %s", t->line, msg);
   } else {
@@ -77,7 +77,7 @@ void token_consume(TokenNode** current, int type, const char* msg){
     *current = get_node((*current)->list.next, TokenNode);
     return;
   }
-  parse_error((*current)->token, msg);
+  parser_error((*current)->token, msg);
 }
 
 Expr* primary(TokenNode** tl, Arena* a){ 
@@ -96,6 +96,8 @@ Expr* primary(TokenNode** tl, Arena* a){
     e->grouping->expression = expr;
   }
   
+  parser_error((*tl)->token, "Expected expression.\n");
+
   return e;
 } 
 
