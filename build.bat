@@ -11,10 +11,12 @@ pushd out
 SET CompilerFlags=%CommonCompilerFlags% %DebugCompilerFlags%
 ::SET CompilerFlags=%CommonCompilerFlags% %ReleaseCompilerFlags%
 
+SET Sources=..\\src\\chunk.c ..\\src\\compiler.c ..\\src\\debug.c ..\\src\\memory.c ..\\src\\object.c ..\\src\\scanner.c ..\\src\\value.c ..\\src\\vm.c
+
 ::cl %CompilerFlags% ..\\tests\\arena_tests.c /I ..\\src /link %CommonLinkerFlags% /OUT:arena_test.exe
 ::cl %CompilerFlags% ..\\tests\\scanner_tests.c /I ..\\src /link %CommonLinkerFlags% /OUT:scanner_test.exe
 ::cl %CompilerFlags% ..\\tests\\hashmap_tests.c /I ..\\src /link %CommonLinkerFlags% /OUT:hashmap_test.exe
-cl %CompilerFlags% ..\\src\\clox.c /I ..\\src /link %CommonLinkerFlags% /OUT:clox.exe
+cl %CompilerFlags% ..\\src\\clox.c %Sources% /I ..\\src /link %CommonLinkerFlags% /OUT:clox.exe
 
 SET LastError=%ERRORLEVEL%
 popd

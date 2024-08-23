@@ -1,28 +1,10 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 #define DEBUG_PRINT_CODE
 #define DEBUG_TRACE_EXECUTION
 
-#define VM_IMPL
 #include "vm.h"
-
-#define CHUNK_IMPL
-#include "chunk.h"
-
-#define SCANNER_IMPL
-#include "scanner.h"
-
-#define COMPILER_IMPL
-#include "compiler.h"
-
-#define DEBUG_IMPL
-#include "debug.h"
-
-#define VALUE_IMPL
-#include "value.h"
-
-#define MEMORY_IMPL
-#include "memory.h"
 
 static void repl(){
   char line[1024];
