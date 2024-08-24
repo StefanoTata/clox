@@ -6,6 +6,7 @@
 #include "compiler.h"
 #include "memory.h"
 #include "object.h"
+#include "table.h"
 #include "vm.h"
 
 #define DEBUG_TRACE_EXECUTION
@@ -33,6 +34,7 @@ static void runtime_error(const char* format, ...){
 void init_vm(){
   reset_stack();
   vm.objects = NULL;
+  init_table(&vm.strings);
 }
 
 void free_vm(){
