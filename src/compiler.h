@@ -4,6 +4,8 @@
 #include "chunk.h"
 #include "scanner.h"
 
+#define UINT8_COUNT (UINT8_MAX + 1)
+
 typedef struct {
   Token current;
   Token previous;
@@ -25,7 +27,7 @@ typedef enum{
   PREC_PRIMARY
 } Precedence;
 
-typedef void (*ParseFn)();
+typedef void (*ParseFn)(int can_assign);
 
 typedef struct{
   ParseFn prefix;
@@ -33,8 +35,16 @@ typedef struct{
   Precedence precedence;
 } ParseRule;
 
-Parser parser;
-Chunk* compiling_chunk;
+typedef struct{
+  Token name;
+  int depth;
+} Local;
+
+typedef struct {
+  Local locals[UINT8_COUNT];
+  int local_count;
+  int scope_depth;
+} Compiler;
 
 int compile(const char* source, Chunk* chunk); 
 
