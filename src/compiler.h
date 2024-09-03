@@ -2,6 +2,7 @@
 #define COMPILER_H
 
 #include "chunk.h"
+#include "object.h"
 #include "scanner.h"
 
 #define UINT8_COUNT (UINT8_MAX + 1)
@@ -40,12 +41,21 @@ typedef struct{
   int depth;
 } Local;
 
-typedef struct {
+typedef enum{
+  TYPE_FUNCTION,
+  TYPE_SCRIPT
+} FunctionType;
+
+typedef struct Compiler{
+  struct Compiler* enclosing;
+  ObjFunction* function;
+  FunctionType type;
+
   Local locals[UINT8_COUNT];
   int local_count;
   int scope_depth;
 } Compiler;
 
-int compile(const char* source, Chunk* chunk); 
+ObjFunction* compile(const char* source); 
 
 #endif

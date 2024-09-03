@@ -9,6 +9,8 @@ void disassembler_chunk(Chunk* chunk, const char* name){
   for(int offset = 0; offset < chunk->count;){
     offset = disassembler_instruction(chunk, offset);
   }
+
+  printf("\n");
 }
 
 static int simple_instruction(const char* name, int offset){
@@ -57,6 +59,8 @@ int disassembler_instruction(Chunk* chunk, int offset){
       return jump_instruction("OP_LOOP", -1, chunk, offset);
     case OP_RETURN:
       return simple_instruction("OP_RETURN", offset);
+    case OP_CALL:
+      return byte_instruction("OP_CALL", chunk, offset);
     case OP_CONSTANT:
       return constant_instruction("OP_CONSTANT", chunk, offset);
     case OP_NIL:
