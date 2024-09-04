@@ -35,7 +35,6 @@ typedef enum{
   INTERPRET_RUNTIME_ERROR,
 } InterpretResult;
 
-VM vm;
 extern VM vm;
 
 void init_vm();

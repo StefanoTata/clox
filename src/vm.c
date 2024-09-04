@@ -14,6 +14,8 @@
 #include "debug.h"
 #endif
 
+VM vm;
+
 static void reset_stack(){
   vm.stack_top = vm.stack;
   vm.frame_count = 0;
