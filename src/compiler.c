@@ -208,7 +208,7 @@ static uint8_t identifier_constant(Token* name){
 }
 
 static int identifiers_equal(Token* a, Token* b){
-  if(a->length != b->length) return 1;
+  if(a->length != b->length) return 0;
   return memcmp(a->start, b->start, a->length) == 0;
 }
 
