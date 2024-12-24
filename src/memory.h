@@ -2,6 +2,7 @@
 #define MEMORY_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 #define ALLOCATE(type, count) (type*)reallocate(NULL, 0, sizeof(type) * (count))
 
